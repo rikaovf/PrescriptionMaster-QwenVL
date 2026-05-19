@@ -1,0 +1,20 @@
+{
+  "medico": "HERCULES MARQUES,DRO",
+  "crm": "0000172330",
+  "paciente": "DENIZE COUTO GOMES",
+  "tipo": "CAPSULAS",
+  "posologia": "TOMAR 2 CAPS. PELA MANHA E 1 CAPS. PELA TARDE",
+  "componentes":
+  [
+    {
+      "componente": "BUPROPIONA",
+      "dosagem": 90.0000,
+      "unidade": "MG "
+    },
+    {
+      "componente": "NALTREXONE (P/ CAPSULA)",
+      "dosagem": 8.0000,
+      "unidade": "MG "
+    }
+  ]
+}

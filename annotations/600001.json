@@ -1,0 +1,15 @@
+{
+  "medico": "MIGUEL MOUKARZEL MAAZ,DRO",
+  "crm": "0000050762",
+  "paciente": "MARIA N. N . DUQUE",
+  "tipo": "CAPSULAS",
+  "posologia": "TOMAR 1 CAPS. POR DIA.",
+  "componentes":
+  [
+    {
+      "componente": "FLUOXETINA (PARA CAPS.)",
+      "dosagem": 10.0000,
+      "unidade": "MG "
+    }
+  ]
+}
