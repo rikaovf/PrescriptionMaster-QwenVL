@@ -5,11 +5,13 @@ from config import (
     OUTPUT_DIR
 )
 
-from services.file_processor import processar_arquivo
-
 from helpers.json_helper import salvar_json
 from helpers.file_helper import is_hidden_file
+
+# 🔥 NOVO PIPELINE (VISÃO + EXTRAÇÃO)
+from vision.vl_processor import extrair_texto_imagem
 from llm.extractor import extrair_dados_receita
+
 
 def salvar_resultado(nome_arquivo, texto):
 
@@ -20,35 +22,26 @@ def salvar_resultado(nome_arquivo, texto):
         f"{nome_saida}.txt"
     )
 
-    with open(
-        output_path,
-        "w",
-        encoding="utf-8"
-    ) as f:
-
+    with open(output_path, "w", encoding="utf-8") as f:
         f.write(texto)
 
-    print(f"[INFO] OCR salvo: {output_path}")
+    print(f"[INFO] OCR/VL salvo: {output_path}")
+
 
 def main():
 
     arquivos = os.listdir(IMAGES_DIR)
 
     if not arquivos:
-
         print("[INFO] Nenhum arquivo encontrado")
         return
 
     for arquivo in arquivos:
 
-        # adaptação para o MACOS ignorar arquivos de metadados.
         if is_hidden_file(arquivo):
             continue
 
-        caminho = os.path.join(
-            IMAGES_DIR,
-            arquivo
-        )
+        caminho = os.path.join(IMAGES_DIR, arquivo)
 
         try:
 
@@ -56,49 +49,45 @@ def main():
             print(f"[INFO] Arquivo: {arquivo}")
             print("================================================")
 
-            # =================================================
-            # OCR
-            # =================================================
+            print("[INFO] Processando imagem...")
 
-            texto_ocr = processar_arquivo(caminho)
+            texto_estruturado = extrair_texto_imagem(caminho)
 
-            if not texto_ocr:
-
-                print("[INFO] Arquivo ignorado")
-                continue
+            #if not texto_estruturado:
+            #    print("[INFO] Arquivo ignorado")
+            #    continue
 
             # =================================================
-            # SALVA OCR
+            # SALVA TEXTO INTERMEDIÁRIO
             # =================================================
 
             salvar_resultado(
                 arquivo,
-                texto_ocr
+                texto_estruturado
             )
 
             # =================================================
-            # LLM
+            # 🔥 LLM EXTRACTION
             # =================================================
 
-            print("[INFO] Estruturando JSON")
+            #print("[INFO] Estruturando JSON...")
 
-            dados_estruturados = extrair_dados_receita(
-                texto_ocr
-            )
+            #dados_estruturados = extrair_dados_receita(
+                #texto_estruturado
+            #)
 
-            if not dados_estruturados:
-
-                print("[ERRO] Falha ao estruturar")
-                continue
+            #if not dados_estruturados:
+                #print("[ERRO] Falha ao estruturar JSON")
+                #continue
 
             # =================================================
-            # JSON
+            # SALVAR JSON FINAL
             # =================================================
 
-            salvar_json(
-                arquivo,
-                dados_estruturados
-            )
+            #salvar_json(
+                #arquivo,
+                #dados_estruturados
+            #)
 
             print("[INFO] Processo concluído")
 
@@ -106,6 +95,7 @@ def main():
 
             print("\n[ERRO CRÍTICO]")
             print(str(e))
+
 
 if __name__ == "__main__":
     main()
