@@ -8,7 +8,7 @@ from config import (
 from services.file_processor import processar_arquivo
 
 from helpers.json_helper import salvar_json
-
+from helpers.file_helper import is_hidden_file
 from llm.extractor import extrair_dados_receita
 
 def salvar_resultado(nome_arquivo, texto):
@@ -40,6 +40,10 @@ def main():
         return
 
     for arquivo in arquivos:
+
+        # adaptação para o MACOS ignorar arquivos de metadados.
+        if is_hidden_file(arquivo):
+            continue
 
         caminho = os.path.join(
             IMAGES_DIR,

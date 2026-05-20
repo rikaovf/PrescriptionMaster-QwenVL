@@ -13,3 +13,7 @@ def is_image(file_path):
 def is_pdf(file_path):
 
     return file_path.lower().endswith('.pdf')
+
+def is_hidden_file(filename):
+
+    return filename.startswith(".")
