@@ -7,6 +7,9 @@ ROOT_DIR = os.path.dirname(BASE_DIR)
 IMAGES_DIR = os.path.join(ROOT_DIR, "images")
 TEMP_DIR = os.path.join(ROOT_DIR, "temp")
 OUTPUT_DIR = os.path.join(ROOT_DIR, "output")
+HF_MODELS_DIR = os.path.join( BASE_DIR,
+                              "models" )
+
 
 os.makedirs(TEMP_DIR, exist_ok=True)
 os.makedirs(OUTPUT_DIR, exist_ok=True)

@@ -1,4 +1,8 @@
 import torch
+import os
+
+os.environ["HF_HOME"] = HF_MODELS_DIR
+
 from PIL import Image
 from transformers import AutoProcessor, Qwen2VLForConditionalGeneration
 
