@@ -1,75 +1,185 @@
-import torch
 import os
-
-os.environ["HF_HOME"] = HF_MODELS_DIR
+import torch
 
 from PIL import Image
-from transformers import AutoProcessor, Qwen2VLForConditionalGeneration
 
-MODEL_ID = "Qwen/Qwen2-VL-7B-Instruct"
+from config import HF_MODELS_DIR
 
-# =========================r
-# 1. DEVICE INTELIGENTE
-# =========================
-device = "cuda" if torch.cuda.is_available() else "cpu"
+# =========================================================
+# HUGGINGFACE CACHE
+# =========================================================
 
-# =========================
-# 2. CARREGAMENTO SINGLETON
-# =========================0659232
-print("[INFO] Carregando Qwen-VL (uma vez só)...")
+os.environ["HF_HOME"] = HF_MODELS_DIR
+os.environ["TRANSFORMERS_CACHE"] = HF_MODELS_DIR
+os.environ["HUGGINGFACE_HUB_CACHE"] = HF_MODELS_DIR
 
-processor = AutoProcessor.from_pretrained(MODEL_ID)
+# =========================================================
+# TRANSFORMERS
+# =========================================================
 
-model = Qwen2VLForConditionalGeneration.from_pretrained(
-    MODEL_ID,
-    torch_dtype=torch.float16 if device == "cuda" else torch.float32,
-    device_map="auto",
-    low_cpu_mem_usage=True
+from transformers import (
+    AutoProcessor,
+    Qwen2VLForConditionalGeneration
 )
 
-model.eval()  # 🔥 importante: modo inferência
+# =========================================================
+# CONFIG
+# =========================================================
 
+MODEL_ID = "Qwen/Qwen2-VL-2B-Instruct"
+
+# =========================================================
+# DEVICE AUTO
+# =========================================================
+
+device = "cuda" if torch.cuda.is_available() else "cpu"
+
+print(f"[INFO] Device selecionado: {device}")
+
+# =========================================================
+# LOAD PROCESSOR
+# =========================================================
+
+print("[INFO] Carregando processor...")
+
+processor = AutoProcessor.from_pretrained(
+    MODEL_ID
+)
+
+# =========================================================
+# LOAD MODEL
+# =========================================================
+
+print("[INFO] Carregando Qwen2-VL 2B...")
+
+# =========================================================
+# CONFIG GPU
+# =========================================================
+
+if device == "cuda":
+
+    model = Qwen2VLForConditionalGeneration.from_pretrained(
+        MODEL_ID,
+
+        torch_dtype=torch.float16,
+
+        device_map="cuda",
+
+        low_cpu_mem_usage=True,
+
+        attn_implementation="sdpa"
+    )
+
+# =========================================================
+# CONFIG CPU
+# =========================================================
+
+else:
+
+    model = Qwen2VLForConditionalGeneration.from_pretrained(
+        MODEL_ID,
+
+        torch_dtype=torch.float32,
+
+        device_map="cpu",
+
+        low_cpu_mem_usage=True
+    )
+
+# =========================================================
+# EVAL MODE
+# =========================================================
+
+model.eval()
+
+print("[INFO] Modelo carregado com sucesso")
+
+# =========================================================
+# PROMPT OCR
+# =========================================================
 
 SYSTEM_PROMPT = """
 Você é um OCR especializado em receitas médicas.
 
-Extraia o texto exatamente como aparece na imagem.
-- não interprete
-- não explique
-- não resuma
-- preserve linhas e enumeração
+Sua função é extrair TODO o texto da imagem.
+
+REGRAS:
+- NÃO interpretar
+- NÃO resumir
+- NÃO reorganizar
+- NÃO corrigir
+- NÃO explicar
+
+Preserve:
+- linhas
+- espaçamentos
+- enumeração
+- dosagens
+- observações
+- separação entre fórmulas
+- manuscritos mesmo com baixa confiança
+
+Retorne SOMENTE o texto bruto extraído.
 """
 
+# =========================================================
+# EXTRAÇÃO MULTIMODAL
+# =========================================================
 
 def extrair_texto_qwen(image_path: str):
 
+    # =====================================================
+    # LOAD IMAGE
+    # =====================================================
+
     image = Image.open(image_path).convert("RGB")
+
+    # =====================================================
+    # OTIMIZAÇÃO
+    # =====================================================
+
+    # reduz explosão de patches visuais
+    image.thumbnail((1400, 1400))
+
+    # =====================================================
+    # CHAT TEMPLATE
+    # =====================================================
 
     messages = [
         {
             "role": "user",
             "content": [
-                {"type": "image", "image": image},
-                {"type": "text", "text": SYSTEM_PROMPT}
+                {
+                    "type": "image"
+                },
+                {
+                    "type": "text",
+                    "text": SYSTEM_PROMPT
+                }
             ]
         }
     ]
 
-    # =========================
-    # 3. PREPROCESSAMENTO
-    # =========================
-    inputs = processor.apply_chat_template(
+    text_prompt = processor.apply_chat_template(
         messages,
-        add_generation_prompt=True,
+        tokenize=False,
+        add_generation_prompt=True
+    )
+
+    # =====================================================
+    # PROCESSAMENTO MULTIMODAL
+    # =====================================================
+
+    inputs = processor(
+        text=[text_prompt],
+        images=[image],
+        padding=True,
         return_tensors="pt"
     )
 
-    #inputs = inputs.to(device)
-    inputs = processor(
-    text=SYSTEM_PROMPT,
-    images=image,
-    return_tensors="pt"
-    )
+    # =====================================================
+    # DEVICE
+    # =====================================================
 
     inputs = {
         k: v.to(device)
@@ -78,25 +188,58 @@ def extrair_texto_qwen(image_path: str):
         for k, v in inputs.items()
     }
 
-    # =========================
-    # 4. INFERÊNCIA OTIMIZADA
-    # =========================
-    with torch.no_grad():  # 🔥 evita uso de memória desnecessária
+    # =====================================================
+    # INFERÊNCIA
+    # =====================================================
 
-        output = model.generate(
+    with torch.inference_mode():
+
+        generated_ids = model.generate(
             **inputs,
-            max_new_tokens=512,   # 🔥 reduz RAM e tempo
-            temperature=0.1,
-            do_sample=False       # 🔥 mais estável e leve
+
+            # OCR não precisa exagero
+            max_new_tokens=256,
+
+            # inferência estável
+            do_sample=False,
+
+            # reduz consumo VRAM/RAM
+            use_cache=False
         )
 
-    # =========================
-    # 5. DECODIFICAÇÃO
-    # =========================
-    result = processor.decode(
-        output[0],
-        skip_special_tokens=True
-    )
+    # =====================================================
+    # REMOVE PROMPT TOKENS
+    # =====================================================
 
-    # limpeza leve
-    return result.strip()
+    generated_ids_trimmed = [
+        out_ids[len(in_ids):]
+        for in_ids, out_ids in zip(
+            inputs["input_ids"],
+            generated_ids
+        )
+    ]
+
+    # =====================================================
+    # DECODE
+    # =====================================================
+
+    output_text = processor.batch_decode(
+        generated_ids_trimmed,
+        skip_special_tokens=True,
+        clean_up_tokenization_spaces=True
+    )[0]
+
+    # =====================================================
+    # LIMPEZA
+    # =====================================================
+
+    output_text = output_text.strip()
+
+    # =====================================================
+    # LIMPA VRAM
+    # =====================================================
+
+    if device == "cuda":
+        torch.cuda.empty_cache()
+
+    return output_text
