@@ -1,15 +1,12 @@
 import os
 
-from config import (
-    IMAGES_DIR,
-    OUTPUT_DIR
-)
+from config import IMAGES_DIR, OUTPUT_DIR
 
 from helpers.json_helper import salvar_json
 from helpers.file_helper import is_hidden_file
 
-# 🔥 NOVO PIPELINE (VISÃO + EXTRAÇÃO)
-from vision.vl_processor import extrair_texto_imagem
+# 🔥 PIPELINE NOVO (HUGGINGFACE QWEN-VL)
+from vision.qwen_vl import extrair_texto_qwen
 from llm.extractor import extrair_dados_receita
 
 
@@ -25,7 +22,7 @@ def salvar_resultado(nome_arquivo, texto):
     with open(output_path, "w", encoding="utf-8") as f:
         f.write(texto)
 
-    print(f"[INFO] OCR/VL salvo: {output_path}")
+    print(f"[INFO] Texto bruto salvo: {output_path}")
 
 
 def main():
@@ -36,8 +33,11 @@ def main():
         print("[INFO] Nenhum arquivo encontrado")
         return
 
+    print(f"[INFO] Total de arquivos: {len(arquivos)}")
+
     for arquivo in arquivos:
 
+        # ignora arquivos ocultos do sistema
         if is_hidden_file(arquivo):
             continue
 
@@ -46,55 +46,53 @@ def main():
         try:
 
             print("\n================================================")
-            print(f"[INFO] Arquivo: {arquivo}")
+            print(f"[PIPELINE] Processando: {arquivo}")
             print("================================================")
 
-            print("[INFO] Processando imagem...")
+            # ============================================
+            # ETAPA 1 - VISÃO (Qwen-VL HF)
+            # ============================================
+            print("[ETAPA 1] Qwen-VL extraindo texto...")
 
-            texto_estruturado = extrair_texto_imagem(caminho)
+            texto = extrair_texto_qwen(caminho)
 
-            #if not texto_estruturado:
-            #    print("[INFO] Arquivo ignorado")
-            #    continue
+            if not texto or not texto.strip():
+                print("[WARN] Nenhum texto extraído")
+                continue
 
-            # =================================================
-            # SALVA TEXTO INTERMEDIÁRIO
-            # =================================================
+            print("[ETAPA 1] OK")
 
-            salvar_resultado(
+            # salva intermediário
+            salvar_resultado(arquivo, texto)
+
+            # ============================================
+            # ETAPA 2 - EXTRAÇÃO ESTRUTURADA (LLM)
+            # ============================================
+            print("[ETAPA 2] Estruturando JSON com Qwen2.5...")
+
+            json_resultado = extrair_dados_receita(texto)
+
+            if not json_resultado:
+                print("[ERRO] Falha ao estruturar JSON")
+                continue
+
+            print("[ETAPA 2] OK")
+
+            # ============================================
+            # ETAPA 3 - SALVAR RESULTADO FINAL
+            # ============================================
+            salvar_json(
                 arquivo,
-                texto_estruturado
+                json_resultado
             )
 
-            # =================================================
-            # 🔥 LLM EXTRACTION
-            # =================================================
-
-            #print("[INFO] Estruturando JSON...")
-
-            #dados_estruturados = extrair_dados_receita(
-                #texto_estruturado
-            #)
-
-            #if not dados_estruturados:
-                #print("[ERRO] Falha ao estruturar JSON")
-                #continue
-
-            # =================================================
-            # SALVAR JSON FINAL
-            # =================================================
-
-            #salvar_json(
-                #arquivo,
-                #dados_estruturados
-            #)
-
-            print("[INFO] Processo concluído")
+            print("[PIPELINE] Finalizado com sucesso")
 
         except Exception as e:
 
             print("\n[ERRO CRÍTICO]")
-            print(str(e))
+            print(f"Arquivo: {arquivo}")
+            print(f"Erro: {str(e)}")
 
 
 if __name__ == "__main__":
