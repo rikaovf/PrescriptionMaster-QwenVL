@@ -5,6 +5,4 @@ __pycache__/
 output/
 temp/
 src/__pycache__/
-src/models/__pycache__
-src/models/hub
-src/models/xet
+src/models

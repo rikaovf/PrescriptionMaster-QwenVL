@@ -1,4 +1,6 @@
 import os
+import gc
+import time
 import torch
 
 from PIL import Image
@@ -36,6 +38,13 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 
 print(f"[INFO] Device selecionado: {device}")
 
+if device == "cuda":
+
+    print(f"[INFO] GPU: {torch.cuda.get_device_name(0)}")
+
+    # evita explosão total da VRAM
+    torch.cuda.set_per_process_memory_fraction(0.90)
+
 # =========================================================
 # LOAD PROCESSOR
 # =========================================================
@@ -53,7 +62,7 @@ processor = AutoProcessor.from_pretrained(
 print("[INFO] Carregando Qwen2-VL 2B...")
 
 # =========================================================
-# CONFIG GPU
+# GPU
 # =========================================================
 
 if device == "cuda":
@@ -63,15 +72,13 @@ if device == "cuda":
 
         torch_dtype=torch.float16,
 
-        device_map="cuda",
-
         low_cpu_mem_usage=True,
 
         attn_implementation="sdpa"
-    )
+    ).to(device)
 
 # =========================================================
-# CONFIG CPU
+# CPU
 # =========================================================
 
 else:
@@ -81,10 +88,8 @@ else:
 
         torch_dtype=torch.float32,
 
-        device_map="cpu",
-
         low_cpu_mem_usage=True
-    )
+    ).to(device)
 
 # =========================================================
 # EVAL MODE
@@ -99,34 +104,69 @@ print("[INFO] Modelo carregado com sucesso")
 # =========================================================
 
 SYSTEM_PROMPT = """
-Você é um OCR especializado em receitas médicas.
+Você é um OCR especializado em receitas médicas brasileiras.
 
-Sua função é extrair TODO o texto da imagem.
+Sua função é extrair TODO o texto presente na imagem.
+
+IMPORTANTE:
+Dê atenção especial para:
+
+- nome do paciente
+- nome do médico
+- CRM
+- telefone
+- cabeçalhos
+- rodapés
+- carimbos
+- observações
+- posologia
+- fórmulas manipuladas
 
 REGRAS:
-- NÃO interpretar
 - NÃO resumir
-- NÃO reorganizar
-- NÃO corrigir
 - NÃO explicar
+- NÃO reorganizar
+- NÃO inventar
+- NÃO interpretar
+
+Extraia exatamente como estiver escrito.
 
 Preserve:
 - linhas
-- espaçamentos
-- enumeração
+- enumerações
 - dosagens
+- símbolos
 - observações
 - separação entre fórmulas
-- manuscritos mesmo com baixa confiança
 
-Retorne SOMENTE o texto bruto extraído.
+Retorne SOMENTE o texto extraído.
 """
+
+# =========================================================
+# DEBUG MEMÓRIA
+# =========================================================
+
+def mostrar_memoria():
+
+    if device == "cuda":
+
+        alocada = torch.cuda.memory_allocated() / (1024 ** 3)
+
+        reservada = torch.cuda.memory_reserved() / (1024 ** 3)
+
+        print(f"[GPU] VRAM Alocada: {alocada:.2f} GB")
+
+        print(f"[GPU] VRAM Reservada: {reservada:.2f} GB")
 
 # =========================================================
 # EXTRAÇÃO MULTIMODAL
 # =========================================================
 
 def extrair_texto_qwen(image_path: str):
+
+    print("\n[ETAPA 1] Qwen-VL extraindo texto...")
+
+    tempo_inicio = time.time()
 
     # =====================================================
     # LOAD IMAGE
@@ -138,8 +178,9 @@ def extrair_texto_qwen(image_path: str):
     # OTIMIZAÇÃO
     # =====================================================
 
-    # reduz explosão de patches visuais
-    image.thumbnail((1400, 1400))
+    # MUITO IMPORTANTE:
+    # reduz drasticamente patches visuais
+    image.thumbnail((1024, 1024))
 
     # =====================================================
     # CHAT TEMPLATE
@@ -167,7 +208,7 @@ def extrair_texto_qwen(image_path: str):
     )
 
     # =====================================================
-    # PROCESSAMENTO MULTIMODAL
+    # PROCESSAMENTO
     # =====================================================
 
     inputs = processor(
@@ -188,6 +229,8 @@ def extrair_texto_qwen(image_path: str):
         for k, v in inputs.items()
     }
 
+    mostrar_memoria()
+
     # =====================================================
     # INFERÊNCIA
     # =====================================================
@@ -197,18 +240,18 @@ def extrair_texto_qwen(image_path: str):
         generated_ids = model.generate(
             **inputs,
 
-            # OCR não precisa exagero
-            max_new_tokens=256,
+            # importante para velocidade
+            max_new_tokens=128,
 
-            # inferência estável
+            # OCR precisa estabilidade
             do_sample=False,
 
-            # reduz consumo VRAM/RAM
-            use_cache=False
+            # MUITO MAIS RÁPIDO
+            use_cache=True
         )
 
     # =====================================================
-    # REMOVE PROMPT TOKENS
+    # REMOVE TOKENS DO PROMPT
     # =====================================================
 
     generated_ids_trimmed = [
@@ -229,17 +272,29 @@ def extrair_texto_qwen(image_path: str):
         clean_up_tokenization_spaces=True
     )[0]
 
-    # =====================================================
-    # LIMPEZA
-    # =====================================================
-
     output_text = output_text.strip()
 
     # =====================================================
-    # LIMPA VRAM
+    # LIMPEZA MEMÓRIA
     # =====================================================
+
+    del inputs
+    del generated_ids
+    del generated_ids_trimmed
+
+    gc.collect()
 
     if device == "cuda":
         torch.cuda.empty_cache()
+
+    # =====================================================
+    # TEMPO TOTAL
+    # =====================================================
+
+    tempo_total = time.time() - tempo_inicio
+
+    print(f"[INFO] Tempo OCR: {tempo_total:.2f}s")
+
+    mostrar_memoria()
 
     return output_text
