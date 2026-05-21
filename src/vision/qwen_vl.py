@@ -11,7 +11,7 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 
 # =========================
 # 2. CARREGAMENTO SINGLETON
-# =========================
+# =========================0659232
 print("[INFO] Carregando Qwen-VL (uma vez só)...")
 
 processor = AutoProcessor.from_pretrained(MODEL_ID)
@@ -60,7 +60,19 @@ def extrair_texto_qwen(image_path: str):
         return_tensors="pt"
     )
 
-    inputs = inputs.to(device)
+    #inputs = inputs.to(device)
+    inputs = processor(
+    text=SYSTEM_PROMPT,
+    images=image,
+    return_tensors="pt"
+    )
+
+    inputs = {
+        k: v.to(device)
+        if hasattr(v, "to")
+        else v
+        for k, v in inputs.items()
+    }
 
     # =========================
     # 4. INFERÊNCIA OTIMIZADA
