@@ -6,7 +6,7 @@ import torch
 from PIL import Image
 
 from config import HF_MODELS_DIR
-
+from prompts.visionocr_prompt import PROMPT
 from vision.image_cropper import gerar_crops
 
 # =========================================================
@@ -93,40 +93,6 @@ model.eval()
 
 print("[INFO] Modelo carregado")
 
-# =========================================================
-# PROMPT OCR
-# =========================================================
-
-SYSTEM_PROMPT = """
-Você é um OCR especializado em receitas médicas.
-
-Extraia TODO o texto exatamente como aparece na imagem.
-
-REGRAS IMPORTANTES:
-- NÃO interpretar
-- NÃO resumir
-- NÃO reorganizar
-- NÃO completar informações
-- NÃO inventar campos
-- NÃO gerar estrutura JSON
-- NÃO gerar listas sem existir na imagem
-
-Extraia somente o conteúdo visual presente.
-
-Mantenha:
-- linhas
-- posições aproximadas
-- separações
-- dosagens
-- quebras de linha
-- textos pequenos
-- cabeçalhos
-- rodapés
-- carimbos
-- manuscritos
-
-Retorne apenas o texto extraído.
-"""
 
 # =========================================================
 # DEBUG MEMÓRIA
@@ -209,7 +175,7 @@ def extrair_texto_qwen(image_path: str):
                     },
                     {
                         "type": "text",
-                        "text": SYSTEM_PROMPT
+                        "text": PROMPT
                     }
                 ]
             }

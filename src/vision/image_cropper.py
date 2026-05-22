@@ -7,27 +7,26 @@ def gerar_crops(image_path: str):
 
     largura, altura = image.size
 
-    # =====================================================
-    # REGIÕES
-    # =====================================================
+    limite_topo = int(altura * 0.25)
+    limite_rodape = int(altura * 0.75)
 
     topo = image.crop((
         0,
         0,
         largura,
-        int(altura * 0.20)
+        limite_topo
     ))
 
     centro = image.crop((
         0,
-        int(altura * 0.20),
+        limite_topo,
         largura,
-        int(altura * 0.80)
+        limite_rodape
     ))
 
     rodape = image.crop((
         0,
-        int(altura * 0.80),
+        limite_rodape,
         largura,
         altura
     ))
