@@ -37,6 +37,7 @@ Priorize informações localizadas em:
 - assinaturas
 
 Se não encontrar alguma informação, utilize null.
+Decifre a informação do prescritor, em todos os casos que ele nao for veterinário, a receita sempre será de uso HUMANO, caso contrário o uso será ANIMAL
 
 ────────────────────────────────────────
 IDENTIFICAÇÃO DE PACIENTE
@@ -52,8 +53,36 @@ Utilize apenas informações explicitamente presentes na receita.
 Não invente dados.
 
 ────────────────────────────────────────
+RECEITAS VETERINÁRIAS
+────────────────────────────────────────
+
+Se identificar que a receita é veterinária:
+
+Extraia:
+
+- nome do animal
+- espécie
+- raça
+- nome do tutor
+
+Preencha:
+
+animal
+tutor
+
+Se não existir informação:
+null
+
+Se for receita humana:
+
+animal = null
+tutor = null
+
+────────────────────────────────────────
 REGRA CRÍTICA: IDENTIFICAÇÃO DE FÓRMULAS
 ────────────────────────────────────────
+
+Tipo da receita deve ser uso "HUMANO" ou "ANIMAL"
 
 Uma receita pode conter uma ou mais fórmulas.
 
@@ -348,8 +377,9 @@ null
 ────────────────────────────────────────
 ESTRUTURA FINAL OBRIGATÓRIA
 ────────────────────────────────────────
-
 {
+  "tipo_receita": "",
+
   "info_prescritor": {
     "nome": "",
     "crm": "",
@@ -361,6 +391,17 @@ ESTRUTURA FINAL OBRIGATÓRIA
   "paciente": {
     "nome": "",
     "fone": ""
+  },
+
+  "tutor": {
+    "nome": "",
+    "fone": ""
+  },
+
+  "animal": {
+    "nome": "",
+    "especie": "",
+    "raca": ""
   },
 
   "formulas": [

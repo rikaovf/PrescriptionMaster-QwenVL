@@ -8,6 +8,7 @@ from PIL import Image
 from config import HF_MODELS_DIR
 from prompts.visionocr_prompt import PROMPT
 from vision.image_cropper import gerar_crops
+from vision.ocr_merge import ( merge_ocr_resultados )
 
 # =========================================================
 # CACHE HUGGINGFACE
@@ -30,7 +31,7 @@ from transformers import (
 # CONFIG
 # =========================================================
 
-MODEL_ID = "Qwen/Qwen2-VL-2B-Instruct"
+MODEL_ID = "Qwen/Qwen2-VL-7B-Instruct-GPTQ-Int4"
 
 # =========================================================
 # DEVICE
@@ -138,6 +139,8 @@ def extrair_texto_qwen(image_path: str):
 
     resultado_final = []
 
+    resultado_merge = []
+
     # =====================================================
     # PROCESSA CADA CROP
     # =====================================================
@@ -150,11 +153,17 @@ def extrair_texto_qwen(image_path: str):
         # TOKENS DINÂMICOS
         # =================================================
 
-        max_tokens = 128
+        if nome_crop == "pagina_completa":
 
-        # centro possui MUITO mais texto
-        if nome_crop == "centro":
-            max_tokens = 512
+            max_tokens = 1024
+
+        elif nome_crop == "centro":
+
+            max_tokens = 768
+
+        else:
+
+            max_tokens = 256
 
         # =================================================
         # RESIZE
@@ -260,6 +269,7 @@ def extrair_texto_qwen(image_path: str):
         )
 
         resultado_final.append(output_text)
+        resultado_merge.append(output_text)
 
         # =================================================
         # LIMPEZA MEMÓRIA
@@ -290,5 +300,17 @@ def extrair_texto_qwen(image_path: str):
     # =====================================================
     # RETORNO FINAL
     # =====================================================
+
+    texto_mergeado = merge_ocr_resultados(
+        resultado_merge
+    )
+
+    resultado_final.append(
+        "\n===== OCR FINAL =====\n"
+    )
+
+    resultado_final.append(
+        texto_mergeado
+    )
 
     return "\n".join(resultado_final)

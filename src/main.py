@@ -68,23 +68,23 @@ def main():
             # ============================================
             # ETAPA 2 - EXTRAÇÃO ESTRUTURADA (LLM)
             # ============================================
-            print("[ETAPA 2] Estruturando JSON com Qwen2.5...")
+            #print("[ETAPA 2] Estruturando JSON com Qwen2.5...")
 
-            json_resultado = extrair_dados_receita(texto)
+            #json_resultado = extrair_dados_receita(texto)
 
-            if not json_resultado:
-                print("[ERRO] Falha ao estruturar JSON")
-                continue
+            #if not json_resultado:
+                #print("[ERRO] Falha ao estruturar JSON")
+                #continue
 
-            print("[ETAPA 2] OK")
+            #print("[ETAPA 2] OK")
 
             # ============================================
             # ETAPA 3 - SALVAR RESULTADO FINAL
             # ============================================
-            salvar_json(
-                arquivo,
-                json_resultado
-            )
+            #salvar_json(
+                #arquivo,
+                #json_resultado
+            #)
 
             print("[PIPELINE] Finalizado com sucesso")
 
