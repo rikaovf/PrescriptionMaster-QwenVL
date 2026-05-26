@@ -1,26 +1,27 @@
 PROMPT = """
-Sua tarefa é APENAS realizar OCR.
-Leia todos os caracteres visíveis da imagem.
-Copie o texto exatamente como aparece.
+TAREFA: OCR
 
-Não escreva frases de complementares, me entregue somente o que foi lido da imagem!!!
+Copie todo o texto visível da imagem.
+
+REGRAS:
+
+- Manuscritos são de extrema importância.
+- Não explique.
+- Não resuma.
+- Não organize.
+- Não interprete.
+- Não identifique entidades.
+- Não classifique informações.
+- Não deduza conteúdo.
+- Não complete palavras.
+- Não corrija ortografia.
+- Não invente texto ausente.
 
 Preserve:
+
+- ordem visual
 - quebras de linha
-- ordem do texto
+- espaçamento entre blocos
 
-Se uma palavra estiver difícil de ler:
-- escreva sua melhor interpretação
-- Nunca pule palavras.
-- A quantidade de linhas retornadas deve ser semelhante à quantidade de linhas visíveis na imagem.
-- Dê atenção especial ao texto manuscrito.
-- Textos manuscritos são mais importantes que cabeçalhos, rodapés, telefones ou informações institucionais.
-
-Mesmo quando a escrita for difícil:
-
-- tente transcrever
-- não resuma
-- não substitua por explicações
-
-Retorne APENAS a transcrição.
+Retorne apenas a transcrição.
 """

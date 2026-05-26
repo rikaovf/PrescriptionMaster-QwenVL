@@ -7,8 +7,7 @@ from PIL import Image
 
 from config import HF_MODELS_DIR
 from prompts.visionocr_prompt import PROMPT
-from vision.image_cropper import gerar_crops
-from vision.ocr_merge import ( merge_ocr_resultados )
+from vision.image_enhancer import melhorar_imagem
 
 # =========================================================
 # CACHE HUGGINGFACE
@@ -24,14 +23,15 @@ os.environ["HUGGINGFACE_HUB_CACHE"] = HF_MODELS_DIR
 
 from transformers import (
     AutoProcessor,
-    Qwen2VLForConditionalGeneration
+    Qwen2VLForConditionalGeneration,
+    BitsAndBytesConfig
 )
 
 # =========================================================
 # CONFIG
 # =========================================================
 
-MODEL_ID = "Qwen/Qwen2-VL-7B-Instruct-GPTQ-Int4"
+MODEL_ID = "Qwen/Qwen2-VL-2B-Instruct"
 
 # =========================================================
 # DEVICE
@@ -68,21 +68,16 @@ if device == "cuda":
 
     model = Qwen2VLForConditionalGeneration.from_pretrained(
         MODEL_ID,
-
-        torch_dtype=torch.float16,
-
+        device_map="auto",
         low_cpu_mem_usage=True,
-
-        attn_implementation="sdpa"
-    ).to(device)
+        trust_remote_code=True
+    )
 
 else:
 
     model = Qwen2VLForConditionalGeneration.from_pretrained(
         MODEL_ID,
-
         torch_dtype=torch.float32,
-
         low_cpu_mem_usage=True
     ).to(device)
 
@@ -131,162 +126,78 @@ def extrair_texto_qwen(image_path: str):
 
     inicio = time.time()
 
-    # =====================================================
-    # GERA CROPS
-    # =====================================================
+    image = Image.open(image_path).convert("RGB")
+    image = melhorar_imagem(image)
+    image.thumbnail((1600, 1600))
 
-    crops = gerar_crops(image_path)
-
-    resultado_final = []
-
-    resultado_merge = []
-
-    # =====================================================
-    # PROCESSA CADA CROP
-    # =====================================================
-
-    for nome_crop, image in crops.items():
-
-        print(f"\n[INFO] OCR Crop: {nome_crop}")
-
-        # =================================================
-        # TOKENS DINÂMICOS
-        # =================================================
-
-        if nome_crop == "pagina_completa":
-
-            max_tokens = 1024
-
-        elif nome_crop == "centro":
-
-            max_tokens = 768
-
-        else:
-
-            max_tokens = 256
-
-        # =================================================
-        # RESIZE
-        # =================================================
-
-        image.thumbnail((1024, 1024))
-
-        # =================================================
-        # CHAT TEMPLATE
-        # =================================================
-
-        messages = [
-            {
-                "role": "user",
-                "content": [
-                    {
-                        "type": "image"
-                    },
-                    {
-                        "type": "text",
-                        "text": PROMPT
-                    }
-                ]
-            }
-        ]
-
-        text_prompt = processor.apply_chat_template(
-            messages,
-            tokenize=False,
-            add_generation_prompt=True
-        )
-
-        # =================================================
-        # PROCESSAMENTO
-        # =================================================
-
-        inputs = processor(
-            text=[text_prompt],
-            images=[image],
-            padding=True,
-            return_tensors="pt"
-        )
-
-        # =================================================
-        # DEVICE
-        # =================================================
-
-        inputs = {
-            k: v.to(device)
-            if hasattr(v, "to")
-            else v
-            for k, v in inputs.items()
+    messages = [
+        {
+            "role": "user",
+            "content": [
+                {"type": "image"},
+                {
+                    "type": "text",
+                    "text": PROMPT
+                }
+            ]
         }
+    ]
 
-        mostrar_memoria()
+    text_prompt = processor.apply_chat_template(
+        messages,
+        tokenize=False,
+        add_generation_prompt=True
+    )
 
-        # =================================================
-        # INFERÊNCIA
-        # =================================================
+    inputs = processor(
+        text=[text_prompt],
+        images=[image],
+        padding=True,
+        return_tensors="pt"
+    )
 
-        with torch.inference_mode():
+    inputs = {
+        k: v.to(device)
+        if hasattr(v, "to")
+        else v
+        for k, v in inputs.items()
+    }
 
-            generated_ids = model.generate(
-                **inputs,
+    mostrar_memoria()
 
-                max_new_tokens=max_tokens,
+    with torch.inference_mode():
 
-                do_sample=False,
-
-                use_cache=True
-            )
-
-        # =================================================
-        # REMOVE PROMPT TOKENS
-        # =================================================
-
-        generated_ids_trimmed = [
-            out_ids[len(in_ids):]
-            for in_ids, out_ids in zip(
-                inputs["input_ids"],
-                generated_ids
-            )
-        ]
-
-        # =================================================
-        # DECODE
-        # =================================================
-
-        output_text = processor.batch_decode(
-            generated_ids_trimmed,
-            skip_special_tokens=True,
-            clean_up_tokenization_spaces=True
-        )[0]
-
-        output_text = output_text.strip()
-
-        # =================================================
-        # RESULTADO FINAL
-        # =================================================
-
-        resultado_final.append(
-            f"\n===== {nome_crop.upper()} =====\n"
+        generated_ids = model.generate(
+            **inputs,
+            max_new_tokens=1024,
+            do_sample=False,
+            use_cache=True
         )
 
-        resultado_final.append(output_text)
-        resultado_merge.append(output_text)
+    generated_ids_trimmed = [
+        out_ids[len(in_ids):]
+        for in_ids, out_ids in zip(
+            inputs["input_ids"],
+            generated_ids
+        )
+    ]
 
-        # =================================================
-        # LIMPEZA MEMÓRIA
-        # =================================================
+    output_text = processor.batch_decode(
+        generated_ids_trimmed,
+        skip_special_tokens=True,
+        clean_up_tokenization_spaces=True
+    )[0]
 
-        del inputs
-        del generated_ids
-        del generated_ids_trimmed
+    output_text = output_text.strip()
 
-        gc.collect()
+    del inputs
+    del generated_ids
+    del generated_ids_trimmed
 
-        if device == "cuda":
-            torch.cuda.empty_cache()
+    gc.collect()
 
-    # =====================================================
-    # TEMPO TOTAL
-    # =====================================================
+    if device == "cuda":
+        torch.cuda.empty_cache()
 
     fim = time.time()
 
@@ -295,22 +206,4 @@ def extrair_texto_qwen(image_path: str):
         f"{(fim - inicio):.2f}s"
     )
 
-    mostrar_memoria()
-
-    # =====================================================
-    # RETORNO FINAL
-    # =====================================================
-
-    texto_mergeado = merge_ocr_resultados(
-        resultado_merge
-    )
-
-    resultado_final.append(
-        "\n===== OCR FINAL =====\n"
-    )
-
-    resultado_final.append(
-        texto_mergeado
-    )
-
-    return "\n".join(resultado_final)
+    return output_text
