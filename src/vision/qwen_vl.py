@@ -23,8 +23,7 @@ os.environ["HUGGINGFACE_HUB_CACHE"] = HF_MODELS_DIR
 
 from transformers import (
     AutoProcessor,
-    Qwen2VLForConditionalGeneration,
-    BitsAndBytesConfig
+    Qwen2VLForConditionalGeneration
 )
 
 # =========================================================
@@ -68,10 +67,11 @@ if device == "cuda":
 
     model = Qwen2VLForConditionalGeneration.from_pretrained(
         MODEL_ID,
-        device_map="auto",
+        torch_dtype=torch.float16,
         low_cpu_mem_usage=True,
-        trust_remote_code=True
-    )
+        trust_remote_code=True,
+        attn_implementation="sdpa"
+    ).to(device)
 
 else:
 
