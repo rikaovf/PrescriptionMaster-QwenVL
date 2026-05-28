@@ -8,6 +8,12 @@ from config import (
 
 from helpers.json_helper import salvar_json
 
+from helpers.dataset_helper import (
+    salvar_dataset_imagem,
+    salvar_dataset_ocr,
+    salvar_dataset_json
+)
+
 from helpers.file_helper import (
     is_hidden_file,
     is_pdf,
@@ -20,22 +26,34 @@ from llm.extractor import extrair_dados_receita
 
 
 # =========================================================
-# SALVAR TEXTO BRUTO
+# SAVE OCR OUTPUT
 # =========================================================
 
-def salvar_resultado(nome_arquivo, texto):
+def salvar_resultado(
+    nome_arquivo,
+    texto
+):
 
-    nome_saida = os.path.splitext(nome_arquivo)[0]
+    nome_saida = os.path.splitext(
+        nome_arquivo
+    )[0]
 
     output_path = os.path.join(
         OUTPUT_DIR,
         f"{nome_saida}.txt"
     )
 
-    with open(output_path, "w", encoding="utf-8") as f:
+    with open(
+        output_path,
+        "w",
+        encoding="utf-8"
+    ) as f:
+
         f.write(texto)
 
-    print(f"[INFO] Texto bruto salvo: {output_path}")
+    print(
+        f"[INFO] Texto bruto salvo: {output_path}"
+    )
 
 
 # =========================================================
@@ -44,17 +62,25 @@ def salvar_resultado(nome_arquivo, texto):
 
 def main():
 
-    arquivos = os.listdir(IMAGES_DIR)
+    arquivos = os.listdir(
+        IMAGES_DIR
+    )
 
     if not arquivos:
-        print("[INFO] Nenhum arquivo encontrado")
+
+        print(
+            "[INFO] Nenhum arquivo encontrado"
+        )
+
         return
 
-    print(f"[INFO] Total de arquivos: {len(arquivos)}")
+    print(
+        f"[INFO] Total de arquivos: {len(arquivos)}"
+    )
 
     for arquivo in arquivos:
 
-        # ignora arquivos ocultos
+        # ignora ocultos
         if is_hidden_file(arquivo):
             continue
 
@@ -77,7 +103,9 @@ def main():
 
             if is_pdf(caminho):
 
-                print("[INFO] PDF detectado")
+                print(
+                    "[INFO] PDF detectado"
+                )
 
                 imagens = pdf_to_images(
                     caminho,
@@ -86,31 +114,37 @@ def main():
 
                 for imagem in imagens:
 
-                    texto_pagina = extrair_texto_qwen(
-                        imagem
+                    texto_pagina = (
+                        extrair_texto_qwen(
+                            imagem
+                        )
                     )
 
                     texto_final += (
                         texto_pagina + "\n\n"
                     )
 
-                    # remove imagem temporária
+                    # remove temp
                     os.remove(imagem)
 
             # =================================================
-            # IMAGEM
+            # IMAGE
             # =================================================
 
             elif is_image(caminho):
 
-                print("[INFO] Imagem detectada")
+                print(
+                    "[INFO] Imagem detectada"
+                )
 
-                texto_final = extrair_texto_qwen(
-                    caminho
+                texto_final = (
+                    extrair_texto_qwen(
+                        caminho
+                    )
                 )
 
             # =================================================
-            # FORMATO INVÁLIDO
+            # INVALID
             # =================================================
 
             else:
@@ -122,19 +156,23 @@ def main():
                 continue
 
             # =================================================
-            # TEXTO VAZIO
+            # EMPTY OCR
             # =================================================
 
             if not texto_final.strip():
 
-                print("[WARN] Nenhum texto extraído")
+                print(
+                    "[WARN] Nenhum texto extraído"
+                )
 
                 continue
 
-            print("[ETAPA 1] OK")
+            print(
+                "[ETAPA 1] OCR OK"
+            )
 
             # =================================================
-            # SALVA OCR BRUTO
+            # SAVE OCR OUTPUT
             # =================================================
 
             salvar_resultado(
@@ -143,19 +181,62 @@ def main():
             )
 
             # =================================================
-            # ETAPA 2 - LLM
+            # SAVE DATASET RAW
             # =================================================
 
-            # json_resultado = extrair_dados_receita(
-            #     texto_final
-            # )
+            salvar_dataset_imagem(
+                arquivo,
+                caminho
+            )
 
-            # salvar_json(
-            #     arquivo,
-            #     json_resultado
-            # )
+            salvar_dataset_ocr(
+                arquivo,
+                texto_final
+            )
 
-            print("[PIPELINE] Finalizado com sucesso")
+            # =================================================
+            # LLM STRUCTURE
+            # =================================================
+
+            print(
+                "[ETAPA 2] Estruturando JSON..."
+            )
+
+            json_resultado = (
+                extrair_dados_receita(
+                    texto_final
+                )
+            )
+
+            if not json_resultado:
+
+                print(
+                    "[ERRO] Falha ao estruturar JSON"
+                )
+
+                continue
+
+            print(
+                "[ETAPA 2] JSON OK"
+            )
+
+            # =================================================
+            # SAVE JSON
+            # =================================================
+
+            salvar_json(
+                arquivo,
+                json_resultado
+            )
+
+            salvar_dataset_json(
+                arquivo,
+                json_resultado
+            )
+
+            print(
+                "[PIPELINE] Finalizado com sucesso"
+            )
 
         except Exception as e:
 

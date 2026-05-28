@@ -1,0 +1,49 @@
+{
+  "tipo_receita": "HUMANO",
+  "info_prescritor": {
+    "nome": null,
+    "crm": null,
+    "info_contato": {
+      "fone": "(28) 99991-0021"
+    }
+  },
+  "paciente": {
+    "nome": "Loana Magno Joana",
+    "fone": null
+  },
+  "tutor": {
+    "nome": null,
+    "fone": null
+  },
+  "animal": {
+    "nome": null,
+    "especie": null,
+    "raca": null
+  },
+  "formulas": [
+    {
+      "tipo_formula": null,
+      "posologia": "938 Fome 01 cp ante local e rinite 19/30 dias",
+      "qsp": null,
+      "observacao": null,
+      "componentes": [
+        {
+          "nome": "Articulose",
+          "dosagem": "50 mg"
+        },
+        {
+          "nome": "Fascolamina",
+          "dosagem": "150 mg"
+        },
+        {
+          "nome": "Chá Verde",
+          "dosagem": "200 mg"
+        },
+        {
+          "nome": "Rhodia Magu",
+          "dosagem": "100 mg"
+        }
+      ]
+    }
+  ]
+}
