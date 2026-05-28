@@ -24,6 +24,9 @@ from helpers.file_helper import (
 from vision.qwen_vl import extrair_texto_qwen
 from llm.extractor import extrair_dados_receita
 
+from erp.normalizer import (
+    normalizar_receita
+)
 
 # =========================================================
 # SAVE OCR OUTPUT
@@ -206,6 +209,22 @@ def main():
                 extrair_dados_receita(
                     texto_final
                 )
+            )
+
+            # =================================================
+            # ERP NORMALIZER
+            # =================================================
+
+            print(
+                "[ETAPA 3] Normalizando ERP..."
+            )
+
+            json_resultado = normalizar_receita(
+                json_resultado
+            )
+
+            print(
+                "[ETAPA 3] ERP OK"
             )
 
             if not json_resultado:

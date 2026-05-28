@@ -29,19 +29,39 @@
       "componentes": [
         {
           "nome": "Articulose",
-          "dosagem": "50 mg"
+          "dosagem": "50 mg",
+          "erp_match": {
+            "codigo": "00011542",
+            "descricao": "PALATINOSE (ISOMALTULOSE)",
+            "score": 77.78
+          }
         },
         {
           "nome": "Fascolamina",
-          "dosagem": "150 mg"
+          "dosagem": "150 mg",
+          "erp_match": {
+            "codigo": "00010727",
+            "descricao": "FASEOLAMINA *",
+            "score": 90.91
+          }
         },
         {
           "nome": "Chá Verde",
-          "dosagem": "200 mg"
+          "dosagem": "200 mg",
+          "erp_match": {
+            "codigo": "04010109",
+            "descricao": "CATEQUINAS DO CHA VERDE (FORM. CORREÇÃO )",
+            "score": 100
+          }
         },
         {
           "nome": "Rhodia Magu",
-          "dosagem": "100 mg"
+          "dosagem": "100 mg",
+          "erp_match": {
+            "codigo": "04010095",
+            "descricao": "PHOLIA MAGRA ( CORDIA ECAL. 20:1 )",
+            "score": 76.19
+          }
         }
       ]
     }
